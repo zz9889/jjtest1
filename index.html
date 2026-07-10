@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>純本地端語音轉文字 (免API Key)</title>
+    <title>純本地端語音轉文字 (Whisper-Base 高準確度版)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background: #f5f5f7; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
@@ -16,8 +16,8 @@
 </head>
 <body>
 
-    <h2>🎙️ 純本地 AI 語音轉文字</h2>
-    <p style="font-size: 13px; color: #666;">※ 首次使用會下載約 75MB 的 AI 模型到手機快取，之後即可離線使用，完全不消耗流量或任何 API 費用！</p>
+    <h2>🎙️ 純本地 AI 語音轉文字 (Base 升級版)</h2>
+    <p style="font-size: 13px; color: #666;">※ 首次使用會下載約 145MB 的 Base AI 模型到手機快取，並啟用 Beam Search 搜尋算法，辨識準確度大幅提升！之後即可離線使用。</p>
     
     <div class="card">
         <label><b>選擇錄音檔 (支援 mp3, m4a, wav 等):</b></label>
@@ -43,11 +43,11 @@
         // 初始化 AI 模型
         async function initAI() {
             try {
-                statusText.innerText = '正在下載/載入 Whisper AI 模型 (約75MB)，請稍候...';
-                // 使用最輕量且支援中文的 whisper-tiny.en 的多語言版本
-                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+                statusText.innerText = '正在下載/載入 Whisper-Base AI 模型 (約145MB)，首次載入較慢請稍候...';
+                // 升級為準確度更高的 whisper-base 模型
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base');
                 
-                statusText.innerText = '✅ AI 引擎準備就緒！';
+                statusText.innerText = '✅ AI 引擎已升級就緒！';
                 btn.innerText = '開始本地端轉換';
                 btn.disabled = false;
             } catch (error) {
@@ -56,7 +56,7 @@
             }
         }
 
-        // 將手機上傳的音訊檔案轉為 AI 需要的 AudioBuffer 與原始長度
+        // 將手機上傳的音訊檔案轉為 AI 需要的 AudioBuffer
         async function readAudioFile(file) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
             const arrayBuffer = await file.arrayBuffer();
@@ -79,15 +79,20 @@
                 // 1. 讀取並轉換音訊格式
                 const audioData = await readAudioFile(file);
                 
-                btn.innerText = 'AI 辨識中 (這會消耗手機 CPU)...';
+                btn.innerText = 'AI 高精度辨識中 (這會消耗較多 CPU)...';
                 statusText.innerText = '正在分析語音內容，請勿關閉網頁...';
 
-                // 2. 執行 AI 辨識 (強制指定中文)
+                // 2. 執行 AI 辨識 (優化後的 Base 參數配置)
                 const output = await transcriber(audioData, {
                     chunk_length_s: 30,
                     stride_length_s: 5,
                     language: 'chinese',
                     task: 'transcribe',
+                    return_timestamps: false,
+                    generation_config: {
+                        num_beams: 2,         // 啟用束搜尋，大幅提升多字、漏字與字詞精準度
+                        temperature: 0.0,     // 固定答案，避免 AI 隨機胡言亂語
+                    }
                 });
 
                 // 3. 輸出結果
