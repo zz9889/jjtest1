@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>純本地端語音轉文字 (Whisper-Base 高準確度版)</title>
+    <title>純本地端語音轉文字 (Whisper-Small 專業高精準度版)</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background: #f5f5f7; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
@@ -16,8 +16,9 @@
 </head>
 <body>
 
-    <h2>🎙️ 純本地 AI 語音轉文字 (Base 升級版)</h2>
-    <p style="font-size: 13px; color: #666;">※ 首次使用會下載約 145MB 的 Base AI 模型到手機快取，並啟用 Beam Search 搜尋算法，辨識準確度大幅提升！之後即可離線使用。</p>
+    <h2>🎙️ 純本地 AI 語音轉文字 (Small 精準度最高版)</h2>
+    <p style="font-size: 13px; color: #e03e2d; font-weight: bold;">⚠️ 注意：此版本會下載約 480MB 的大型 AI 模型！</p>
+    <p style="font-size: 13px; color: #666;">首次載入需要較久時間與較大流量，且極度消耗手機效能。舊款手機可能會因為記憶體不足導致網頁閃退。若順利載入，辨識率將達到專業實用等級，並支援離線使用。</p>
     
     <div class="card">
         <label><b>選擇錄音檔 (支援 mp3, m4a, wav 等):</b></label>
@@ -43,15 +44,15 @@
         // 初始化 AI 模型
         async function initAI() {
             try {
-                statusText.innerText = '正在下載/載入 Whisper-Base AI 模型 (約145MB)，首次載入較慢請稍候...';
-                // 升級為準確度更高的 whisper-base 模型
-                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base');
+                statusText.innerText = '正在下載/載入 Whisper-Small AI 模型 (約480MB)，檔案較大請耐心等候...';
+                // 升級為網頁端在手機上運行的極限：whisper-small 模型
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-small');
                 
-                statusText.innerText = '✅ AI 引擎已升級就緒！';
+                statusText.innerText = '✅ 頂級 AI 引擎已就緒！';
                 btn.innerText = '開始本地端轉換';
                 btn.disabled = false;
             } catch (error) {
-                statusText.innerText = `❌ 載入失敗: ${error.message}`;
+                statusText.innerText = `❌ 載入失敗: ${error.message} (可能是手機記憶體不足)`;
                 console.error(error);
             }
         }
@@ -79,10 +80,10 @@
                 // 1. 讀取並轉換音訊格式
                 const audioData = await readAudioFile(file);
                 
-                btn.innerText = 'AI 高精度辨識中 (這會消耗較多 CPU)...';
-                statusText.innerText = '正在分析語音內容，請勿關閉網頁...';
+                btn.innerText = 'AI 全速辨識中 (手機可能會發熱)...';
+                statusText.innerText = '正在進行深度語義分析，請勿關閉網頁...';
 
-                // 2. 執行 AI 辨識 (優化後的 Base 參數配置)
+                // 2. 執行 AI 辨識 (Small 參數配置)
                 const output = await transcriber(audioData, {
                     chunk_length_s: 30,
                     stride_length_s: 5,
@@ -90,8 +91,8 @@
                     task: 'transcribe',
                     return_timestamps: false,
                     generation_config: {
-                        num_beams: 2,         // 啟用束搜尋，大幅提升多字、漏字與字詞精準度
-                        temperature: 0.0,     // 固定答案，避免 AI 隨機胡言亂語
+                        num_beams: 2,         // 啟用束搜尋提升精準度
+                        temperature: 0.0,     // 固定答案避免幻覺
                     }
                 });
 
