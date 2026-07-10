@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>純本地端語音轉文字 (免API Key)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background: #f5f5f7; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        button { background: #0071e3; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        textarea { width: 100%; height: 200px; margin-top: 15px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px; }
+        .status { font-size: 14px; color: #666; margin-top: 10px; text-align: center; }
+        input[type="file"] { margin: 15px 0; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <h2>🎙️ 純本地 AI 語音轉文字</h2>
+    <p style="font-size: 13px; color: #666;">※ 首次使用會下載約 75MB 的 AI 模型到手機快取，之後即可離線使用，完全不消耗流量或任何 API 費用！</p>
+    
+    <div class="card">
+        <label><b>選擇錄音檔 (支援 mp3, m4a, wav 等):</b></label>
+        <input type="file" id="audioFile" accept="audio/*">
+        <button id="transcribeBtn" disabled>正在載入 AI 引擎...</button>
+        <div class="status" id="statusText">正在初始化環境...</div>
+    </div>
+
+    <div class="card">
+        <h3>📄 轉換結果</h3>
+        <textarea id="resultText" placeholder="轉換後的文字會顯示在這裡..."></textarea>
+    </div>
+
+    <!-- 引入 Transformers.js 庫 -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+        let transcriber = null;
+        const btn = document.getElementById('transcribeBtn');
+        const statusText = document.getElementById('statusText');
+        const resultText = document.getElementById('resultText');
+
+        // 初始化 AI 模型
+        async function initAI() {
+            try {
+                statusText.innerText = '正在下載/載入 Whisper AI 模型 (約75MB)，請稍候...';
+                // 使用最輕量且支援中文的 whisper-tiny.en 的多語言版本
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+                
+                statusText.innerText = '✅ AI 引擎準備就緒！';
+                btn.innerText = '開始本地端轉換';
+                btn.disabled = false;
+            } catch (error) {
+                statusText.innerText = `❌ 載入失敗: ${error.message}`;
+                console.error(error);
+            }
+        }
+
+        // 將手機上傳的音訊檔案轉為 AI 需要的 AudioBuffer 與原始長度
+        async function readAudioFile(file) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            const arrayBuffer = await file.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            
+            // Whisper 需要單聲道 (Mono) 的 16000Hz 浮點數陣列
+            return audioBuffer.getChannelData(0);
+        }
+
+        btn.addEventListener('click', async () => {
+            const fileInput = document.getElementById('audioFile');
+            if (fileInput.files.length === 0) return alert('請先選擇錄音檔案！');
+
+            const file = fileInput.files[0];
+            btn.disabled = true;
+            btn.innerText = '正在解碼音訊...';
+            resultText.value = '音訊處理中...';
+
+            try {
+                // 1. 讀取並轉換音訊格式
+                const audioData = await readAudioFile(file);
+                
+                btn.innerText = 'AI 辨識中 (這會消耗手機 CPU)...';
+                statusText.innerText = '正在分析語音內容，請勿關閉網頁...';
+
+                // 2. 執行 AI 辨識 (強制指定中文)
+                const output = await transcriber(audioData, {
+                    chunk_length_s: 30,
+                    stride_length_s: 5,
+                    language: 'chinese',
+                    task: 'transcribe',
+                });
+
+                // 3. 輸出結果
+                resultText.value = output.text;
+                statusText.innerText = '✨ 轉換完成！';
+            } catch (error) {
+                resultText.value = `轉換出錯: ${error.message}`;
+                statusText.innerText = '❌ 轉換失敗';
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '開始本地端轉換';
+            }
+        });
+
+        // 頁面載入時自動初始化
+        initAI();
+    </script>
+</body>
+</html>
